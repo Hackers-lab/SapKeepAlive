@@ -40,11 +40,10 @@ jobs:
             echo "tag=${TAG}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Compile Standalone Executables
+      - name: Compile Standalone Executable
         shell: bash
         run: |
           TAG="${{ steps.vars.outputs.tag }}"
-          cmd.exe /c "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe /target:winexe /optimize+ /win32icon:app.ico /out:SapKeepAlive.exe Program.cs"
           cmd.exe /c "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe /target:winexe /optimize+ /win32icon:app.ico /out:SapKeepAlive_${TAG}.exe Program.cs"
 
       - name: Create GitHub Release
@@ -57,20 +56,16 @@ jobs:
 
             ### Features in ${{ steps.vars.outputs.tag }}:
             - **Custom Application Logo & Icon**: High-resolution branded taskbar, window, and binary icon.
-            - **Zero Dependencies**: Native Windows executable (~28 KB).
+            - **Zero Dependencies**: Native standalone Windows executable (~33 KB).
             - **Window Stacking Fixed**: Form no longer forces itself on top of other applications.
             - **Automatic Session Discovery**: Detects and tracks all active SAP sessions (DP1, WP1, etc.) automatically without pressing ping.
             - **Daily Auto-Reset**: Daily countdown timer automatically resets each morning or on restart.
             - **Auto-Close / Logout Scheduler**: Gracefully closes/logs out all active SAP sessions at a designated time.
             - **In-App Direct Update Notifier**: Direct update notifications from GitHub repository.
 
-            ### Downloads:
-            - `SapKeepAlive_${{ steps.vars.outputs.tag }}.exe` (Versioned standalone executable)
-            - `SapKeepAlive.exe` (Standard standalone executable)
+            ### Download:
+            Download **`SapKeepAlive_${{ steps.vars.outputs.tag }}.exe`** below and double-click to run!
           files: |
-            SapKeepAlive.exe
             SapKeepAlive_*.exe
-            logo.png
-            app.ico
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
