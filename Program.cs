@@ -18,7 +18,8 @@ namespace SapKeepAlive
         public const string CurrentVersion = "v2.1.0";
         public const string GitHubRepo = "Hackers-lab/SapKeepAlive";
         public const string GitHubReleasesUrl = "https://github.com/Hackers-lab/SapKeepAlive/releases";
-        public const string GitHubApiUrl = "https://api.github.com/repos/Hackers-lab/SapKeepAlive/releases/latest";
+        public const string GitHubReleasesLatestUrl = "https://github.com/Hackers-lab/SapKeepAlive/releases/latest";
+        public const string RawVersionUrl = "https://raw.githubusercontent.com/Hackers-lab/SapKeepAlive/main/version.txt";
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
@@ -355,23 +356,69 @@ namespace SapKeepAlive
         {
             try
             {
-                using (WebClient client = new WebClient())
+                string latestVersion = "";
+
+                // Method 1: Check plain version.txt on main branch (100% reliable, zero API rate limits, zero 404s)
+                try
                 {
-                    client.Headers.Add("User-Agent", "SapKeepAlive-Updater");
-                    string json = client.DownloadString(GitHubApiUrl);
-                    Match m = Regex.Match(json, @"""tag_name""\s*:\s*""([^""]+)""");
-                    if (m.Success)
+                    using (WebClient client = new WebClient())
                     {
-                        string latestVersion = m.Groups[1].Value.Trim();
-                        if (string.Compare(latestVersion, CurrentVersion, StringComparison.OrdinalIgnoreCase) != 0)
+                        client.Headers.Add("User-Agent", "SapKeepAlive-Updater");
+                        string remoteText = client.DownloadString(RawVersionUrl);
+                        if (!string.IsNullOrEmpty(remoteText))
                         {
-                            if (MessageBox.Show("A newer version of SAP Keep-Alive (" + latestVersion + ") is available!\n\nCurrent Version: " + CurrentVersion + "\n\nWould you like to open GitHub releases to download the update?", 
-                                "Update Available", MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
+                            Match vm = Regex.Match(remoteText.Trim(), @"v?\d+\.\d+(\.\d+)?");
+                            if (vm.Success)
                             {
-                                Process.Start(GitHubReleasesUrl);
+                                latestVersion = vm.Value.Trim();
+                                if (!latestVersion.StartsWith("v", StringComparison.OrdinalIgnoreCase))
+                                    latestVersion = "v" + latestVersion;
                             }
-                            return;
                         }
+                    }
+                }
+                catch {}
+
+                // Method 2: If Method 1 didn't return, check GitHub releases/latest redirect URL
+                if (string.IsNullOrEmpty(latestVersion))
+                {
+                    try
+                    {
+                        HttpWebRequest req = (HttpWebRequest)WebRequest.Create(GitHubReleasesLatestUrl);
+                        req.UserAgent = "SapKeepAlive-Updater";
+                        req.AllowAutoRedirect = false;
+                        using (HttpWebResponse resp = (HttpWebResponse)req.GetResponse())
+                        {
+                            string loc = resp.GetResponseHeader("Location");
+                            if (!string.IsNullOrEmpty(loc))
+                            {
+                                Match rm = Regex.Match(loc, @"/tag/([^/?#]+)");
+                                if (rm.Success) latestVersion = rm.Groups[1].Value.Trim();
+                            }
+                        }
+                    }
+                    catch {}
+                }
+
+                if (!string.IsNullOrEmpty(latestVersion))
+                {
+                    if (string.Compare(latestVersion, CurrentVersion, StringComparison.OrdinalIgnoreCase) != 0)
+                    {
+                        if (MessageBox.Show("A newer version of SAP Keep-Alive (" + latestVersion + ") is available!\n\nYour Version: " + CurrentVersion + "\n\nWould you like to open GitHub releases to download the update?", 
+                            "Update Available", MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
+                        {
+                            Process.Start(GitHubReleasesUrl);
+                        }
+                        return;
+                    }
+                    else
+                    {
+                        if (showPromptIfLatest)
+                        {
+                            MessageBox.Show("You are running the latest version of SAP Keep-Alive (" + CurrentVersion + ").", 
+                                "Up to Date", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                        return;
                     }
                 }
 
@@ -385,7 +432,7 @@ namespace SapKeepAlive
             {
                 if (showPromptIfLatest)
                 {
-                    if (MessageBox.Show("Unable to check GitHub API directly (" + ex.Message + ").\n\nWould you like to open the GitHub Releases page in your browser?", 
+                    if (MessageBox.Show("Unable to reach update server (" + ex.Message + ").\n\nWould you like to open GitHub Releases in your browser?", 
                         "Update Check", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                     {
                         Process.Start(GitHubReleasesUrl);
