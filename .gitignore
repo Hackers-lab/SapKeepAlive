@@ -1,0 +1,10 @@
+﻿*.exe
+!SapKeepAlive2.0.exe
+!SapKeepAlive.exe
+__pycache__/
+*.pyc
+*.obj
+*.pdb
+.vs/
+bin/
+obj/

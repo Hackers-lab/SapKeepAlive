@@ -1,0 +1,65 @@
+﻿name: Release SapKeepAlive
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version tag (e.g. v2.1.0)'
+        required: true
+        default: 'v2.1.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+
+      - name: Compile Standalone Executable
+        shell: cmd
+        run: |
+          C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe /target:winexe /optimize+ /out:SapKeepAlive.exe Program.cs
+
+      - name: Determine Release Tag
+        id: vars
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.vars.outputs.tag }}
+          name: Release ${{ steps.vars.outputs.tag }}
+          body: |
+            ## SapKeepAlive - Multi-Session SAP Keep-Alive Tool
+
+            ### Features:
+            - **Zero Dependencies**: Lightweight standalone Windows executable (~25 KB).
+            - **Background Non-Blocking Keep-Alive**: Prevents inactivity timeout without stealing keyboard focus or window activation.
+            - **Automatic Session Discovery**: Detects and tracks all active SAP sessions (DP1, WP1, etc.) automatically.
+            - **Daily Auto-Reset**: Daily countdown and auto-reset each morning/run.
+            - **Auto-Close / Logout Scheduler**: Gracefully closes/logs out all active SAP sessions at a designated time.
+            - **Configurable Settings**: Keystroke interval, expire hours, target key (Shift, F8, F13), auto-close time, auto-start with Windows.
+            - **Update Notifier**: Direct GitHub release check.
+
+            ### Download:
+            Download `SapKeepAlive.exe` below and double-click to run!
+          files: |
+            SapKeepAlive.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
