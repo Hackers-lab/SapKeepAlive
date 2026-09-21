@@ -2,6 +2,8 @@ name: Release SapKeepAlive
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
   workflow_dispatch:
@@ -31,8 +33,11 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "tag=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
-          else
+          elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          else
+            TAG=$(cat version.txt 2>/dev/null || echo "v2.1.0")
+            echo "tag=${TAG}" >> $GITHUB_OUTPUT
           fi
 
       - name: Compile Standalone Executables
