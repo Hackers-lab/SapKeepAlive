@@ -15,7 +15,7 @@ namespace SapKeepAlive
 {
     static class Program
     {
-        public const string CurrentVersion = "v2.1.0";
+        public const string CurrentVersion = "v2.1.1";
         public const string GitHubRepo = "Hackers-lab/SapKeepAlive";
         public const string GitHubReleasesUrl = "https://github.com/Hackers-lab/SapKeepAlive/releases";
         public const string GitHubReleasesLatestUrl = "https://github.com/Hackers-lab/SapKeepAlive/releases/latest";
@@ -533,16 +533,26 @@ namespace SapKeepAlive
             catch {}
         }
 
-        private static Icon CreateAppIcon()
+        public static Icon CreateAppIcon()
         {
+            try
+            {
+                string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "app.ico");
+                if (File.Exists(iconPath))
+                {
+                    return new Icon(iconPath);
+                }
+            }
+            catch {}
+
             using (Bitmap b = new Bitmap(32, 32))
             using (Graphics g = Graphics.FromImage(b))
             {
-                g.Clear(Color.FromArgb(0, 122, 217));
-                using (Font f = new Font("Arial", 9, FontStyle.Bold))
+                g.Clear(Color.FromArgb(0, 100, 200));
+                using (Font f = new Font("Arial", 8, FontStyle.Bold))
                 using (Brush br = new SolidBrush(Color.White))
                 {
-                    g.DrawString("SAP", f, br, new PointF(2, 8));
+                    g.DrawString("SAP", f, br, new PointF(3, 9));
                 }
                 return Icon.FromHandle(b.GetHicon());
             }
@@ -584,6 +594,7 @@ namespace SapKeepAlive
             this.MaximizeBox = false;
             this.StartPosition = FormStartPosition.CenterScreen;
             this.TopMost = false;
+            try { this.Icon = Program.CreateAppIcon(); } catch {}
 
             InitControls();
         }

@@ -44,8 +44,8 @@ jobs:
         shell: bash
         run: |
           TAG="${{ steps.vars.outputs.tag }}"
-          cmd.exe /c "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe /target:winexe /optimize+ /out:SapKeepAlive.exe Program.cs"
-          cmd.exe /c "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe /target:winexe /optimize+ /out:SapKeepAlive_${TAG}.exe Program.cs"
+          cmd.exe /c "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe /target:winexe /optimize+ /win32icon:app.ico /out:SapKeepAlive.exe Program.cs"
+          cmd.exe /c "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe /target:winexe /optimize+ /win32icon:app.ico /out:SapKeepAlive_${TAG}.exe Program.cs"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -55,14 +55,14 @@ jobs:
           body: |
             ## SapKeepAlive - Multi-Session SAP Keep-Alive Tool
 
-            ### Features:
-            - **Zero Dependencies**: Lightweight standalone Windows executable (~27 KB).
-            - **Background Non-Blocking Keep-Alive**: Prevents inactivity timeout without stealing keyboard focus or window activation.
-            - **Automatic Session Discovery**: Detects and tracks all active SAP sessions (DP1, WP1, etc.) automatically.
-            - **Daily Auto-Reset**: Daily countdown and auto-reset each morning/run.
+            ### Features in ${{ steps.vars.outputs.tag }}:
+            - **Custom Application Logo & Icon**: High-resolution branded taskbar, window, and binary icon.
+            - **Zero Dependencies**: Native Windows executable (~28 KB).
+            - **Window Stacking Fixed**: Form no longer forces itself on top of other applications.
+            - **Automatic Session Discovery**: Detects and tracks all active SAP sessions (DP1, WP1, etc.) automatically without pressing ping.
+            - **Daily Auto-Reset**: Daily countdown timer automatically resets each morning or on restart.
             - **Auto-Close / Logout Scheduler**: Gracefully closes/logs out all active SAP sessions at a designated time.
-            - **Configurable Settings**: Keystroke interval, expire hours, target key (Shift, F8, F13), auto-close time, auto-start with Windows.
-            - **Update Notifier**: Direct GitHub release check.
+            - **In-App Direct Update Notifier**: Direct update notifications from GitHub repository.
 
             ### Downloads:
             - `SapKeepAlive_${{ steps.vars.outputs.tag }}.exe` (Versioned standalone executable)
@@ -70,5 +70,7 @@ jobs:
           files: |
             SapKeepAlive.exe
             SapKeepAlive_*.exe
+            logo.png
+            app.ico
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
