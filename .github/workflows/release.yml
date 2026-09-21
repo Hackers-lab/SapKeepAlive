@@ -1,4 +1,4 @@
-﻿name: Release SapKeepAlive
+name: Release SapKeepAlive
 
 on:
   push:
@@ -25,11 +25,6 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
 
-      - name: Compile Standalone Executable
-        shell: cmd
-        run: |
-          C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe /target:winexe /optimize+ /out:SapKeepAlive.exe Program.cs
-
       - name: Determine Release Tag
         id: vars
         shell: bash
@@ -40,6 +35,13 @@ jobs:
             echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
           fi
 
+      - name: Compile Standalone Executables
+        shell: bash
+        run: |
+          TAG="${{ steps.vars.outputs.tag }}"
+          cmd.exe /c "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe /target:winexe /optimize+ /out:SapKeepAlive.exe Program.cs"
+          cmd.exe /c "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe /target:winexe /optimize+ /out:SapKeepAlive_${TAG}.exe Program.cs"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -49,7 +51,7 @@ jobs:
             ## SapKeepAlive - Multi-Session SAP Keep-Alive Tool
 
             ### Features:
-            - **Zero Dependencies**: Lightweight standalone Windows executable (~25 KB).
+            - **Zero Dependencies**: Lightweight standalone Windows executable (~27 KB).
             - **Background Non-Blocking Keep-Alive**: Prevents inactivity timeout without stealing keyboard focus or window activation.
             - **Automatic Session Discovery**: Detects and tracks all active SAP sessions (DP1, WP1, etc.) automatically.
             - **Daily Auto-Reset**: Daily countdown and auto-reset each morning/run.
@@ -57,9 +59,11 @@ jobs:
             - **Configurable Settings**: Keystroke interval, expire hours, target key (Shift, F8, F13), auto-close time, auto-start with Windows.
             - **Update Notifier**: Direct GitHub release check.
 
-            ### Download:
-            Download `SapKeepAlive.exe` below and double-click to run!
+            ### Downloads:
+            - `SapKeepAlive_${{ steps.vars.outputs.tag }}.exe` (Versioned standalone executable)
+            - `SapKeepAlive.exe` (Standard standalone executable)
           files: |
             SapKeepAlive.exe
+            SapKeepAlive_*.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
