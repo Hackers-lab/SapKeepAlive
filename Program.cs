@@ -352,48 +352,73 @@ namespace SapKeepAlive
             Dashboard.BringToFront();
         }
 
+        public static bool IsNewerVersion(string remoteVer, string currentVer)
+        {
+            try
+            {
+                Version rv = ParseVersion(remoteVer);
+                Version cv = ParseVersion(currentVer);
+                return rv > cv;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static Version ParseVersion(string ver)
+        {
+            if (string.IsNullOrEmpty(ver)) return new Version(0, 0, 0);
+            ver = ver.Trim().TrimStart('v', 'V');
+            string[] parts = ver.Split('.');
+            int major = parts.Length > 0 ? int.Parse(parts[0]) : 0;
+            int minor = parts.Length > 1 ? int.Parse(parts[1]) : 0;
+            int build = parts.Length > 2 ? int.Parse(parts[2]) : 0;
+            return new Version(major, minor, build);
+        }
+
         public static void CheckForUpdates(bool showPromptIfLatest)
         {
             try
             {
                 string latestVersion = "";
 
-                // Method 1: Check plain version.txt on main branch (100% reliable, zero API rate limits, zero 404s)
+                // Method 1: Check GitHub releases/latest redirect URL (instant, no CDN lag)
                 try
                 {
-                    using (WebClient client = new WebClient())
+                    HttpWebRequest req = (HttpWebRequest)WebRequest.Create(GitHubReleasesLatestUrl);
+                    req.UserAgent = "SapKeepAlive-Updater";
+                    req.AllowAutoRedirect = false;
+                    using (HttpWebResponse resp = (HttpWebResponse)req.GetResponse())
                     {
-                        client.Headers.Add("User-Agent", "SapKeepAlive-Updater");
-                        string remoteText = client.DownloadString(RawVersionUrl);
-                        if (!string.IsNullOrEmpty(remoteText))
+                        string loc = resp.GetResponseHeader("Location");
+                        if (!string.IsNullOrEmpty(loc))
                         {
-                            Match vm = Regex.Match(remoteText.Trim(), @"v?\d+\.\d+(\.\d+)?");
-                            if (vm.Success)
-                            {
-                                latestVersion = vm.Value.Trim();
-                                if (!latestVersion.StartsWith("v", StringComparison.OrdinalIgnoreCase))
-                                    latestVersion = "v" + latestVersion;
-                            }
+                            Match rm = Regex.Match(loc, @"/tag/([^/?#]+)");
+                            if (rm.Success) latestVersion = rm.Groups[1].Value.Trim();
                         }
                     }
                 }
                 catch {}
 
-                // Method 2: If Method 1 didn't return, check GitHub releases/latest redirect URL
+                // Method 2: Check raw version.txt with cache-busting timestamp
                 if (string.IsNullOrEmpty(latestVersion))
                 {
                     try
                     {
-                        HttpWebRequest req = (HttpWebRequest)WebRequest.Create(GitHubReleasesLatestUrl);
-                        req.UserAgent = "SapKeepAlive-Updater";
-                        req.AllowAutoRedirect = false;
-                        using (HttpWebResponse resp = (HttpWebResponse)req.GetResponse())
+                        using (WebClient client = new WebClient())
                         {
-                            string loc = resp.GetResponseHeader("Location");
-                            if (!string.IsNullOrEmpty(loc))
+                            client.Headers.Add("User-Agent", "SapKeepAlive-Updater");
+                            string remoteText = client.DownloadString(RawVersionUrl + "?t=" + DateTime.UtcNow.Ticks);
+                            if (!string.IsNullOrEmpty(remoteText))
                             {
-                                Match rm = Regex.Match(loc, @"/tag/([^/?#]+)");
-                                if (rm.Success) latestVersion = rm.Groups[1].Value.Trim();
+                                Match vm = Regex.Match(remoteText.Trim(), @"v?\d+\.\d+(\.\d+)?");
+                                if (vm.Success)
+                                {
+                                    latestVersion = vm.Value.Trim();
+                                    if (!latestVersion.StartsWith("v", StringComparison.OrdinalIgnoreCase))
+                                        latestVersion = "v" + latestVersion;
+                                }
                             }
                         }
                     }
@@ -402,7 +427,8 @@ namespace SapKeepAlive
 
                 if (!string.IsNullOrEmpty(latestVersion))
                 {
-                    if (string.Compare(latestVersion, CurrentVersion, StringComparison.OrdinalIgnoreCase) != 0)
+                    // Strict semantic version comparison: only alert if remote is actually GREATER than current
+                    if (IsNewerVersion(latestVersion, CurrentVersion))
                     {
                         if (MessageBox.Show("A newer version of SAP Keep-Alive (" + latestVersion + ") is available!\n\nYour Version: " + CurrentVersion + "\n\nWould you like to open GitHub releases to download the update?", 
                             "Update Available", MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
